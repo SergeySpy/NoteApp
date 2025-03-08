@@ -279,12 +279,12 @@ public class MainActivity extends AppCompatActivity implements CreateFolderDialo
                     mainHandler.post(() -> notesAdapter.setNotes(filteredNotes));
                 });
                 if (s.length() > 0) {
-                    Drawable drawable = getResources().getDrawable(R.drawable.ic_clear_tiny, null);
-                    int size = dpToPx(8); // Устанавливаем 8dp
+                    Drawable drawable = getResources().getDrawable(R.drawable.ic_clear_modern, null);
+                    int size = dpToPx(8); // Размер 8dp
                     drawable.setBounds(0, 0, size, size);
                     searchInput.setCompoundDrawablesWithIntrinsicBounds(null, null, drawable, null);
-                    searchInput.setCompoundDrawablePadding(dpToPx(4));
-                    Log.d(TAG, "Clear icon size: " + size + "px (" + 8 + "dp)"); // Логируем размер
+                    searchInput.setCompoundDrawablePadding(dpToPx(8)); // Увеличиваем отступ до 8dp
+                    Log.d(TAG, "Clear icon size: " + size + "px (" + 8 + "dp)");
                 } else {
                     searchInput.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
                 }
@@ -297,7 +297,7 @@ public class MainActivity extends AppCompatActivity implements CreateFolderDialo
         searchInput.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_UP) {
                 Drawable drawable = searchInput.getCompoundDrawables()[2]; // drawableEnd
-                if (drawable != null && event.getRawX() >= (searchInput.getRight() - drawable.getBounds().width())) {
+                if (drawable != null && event.getRawX() >= (searchInput.getRight() - drawable.getBounds().width() - dpToPx(8))) {
                     searchInput.setText("");
                     return true;
                 }
