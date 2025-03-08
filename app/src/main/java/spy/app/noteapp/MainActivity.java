@@ -1,21 +1,34 @@
 package spy.app.noteapp;
 
+import android.animation.ValueAnimator;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
-import androidx.activity.OnBackPressedCallback;
-import androidx.appcompat.app.AppCompatActivity;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import androidx.activity.OnBackPressedCallback;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
+
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,103 +36,113 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements CreateFolderDialog.CreateFolderListener {
-
     private ViewPager2 viewPager;
     private FloatingActionButton fab;
-    private TabLayout tabLayout;
+    private Button notesTab;
+    private Button foldersTab;
     private ImageButton menuButton;
+    private ImageButton filterButton;
+    private ImageButton backButton;
+    private EditText searchInput;
+    private TextView folderTitle;
+    private CoordinatorLayout mainLayout;
+    private LinearLayout folderHeader;
+    private LinearLayout tabsContainer;
+    private View toggleIndicator;
     private NotesAdapter notesAdapter;
     private FoldersAdapter foldersAdapter;
     private static final int TAB_NOTES = 0;
     private static final int TAB_FOLDERS = 1;
     private int currentTab = TAB_NOTES;
     private int currentFolderId = 1; // По умолчанию "Все"
-    private ExecutorService executorService; // Для фоновых задач
-    private Handler mainHandler; // Для обновления UI
-    private AppDatabase db; // База данных
-    private static final String TAG = "MainActivity"; // Добавляем TAG
+    private ExecutorService executorService;
+    private Handler mainHandler;
+    private AppDatabase db;
+    private static final String TAG = "MainActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Инициализация компонентов
         viewPager = findViewById(R.id.viewPager);
         fab = findViewById(R.id.fab);
-        tabLayout = findViewById(R.id.tabLayout);
+        notesTab = findViewById(R.id.notesTab);
+        foldersTab = findViewById(R.id.foldersTab);
         menuButton = findViewById(R.id.menuButton);
+        filterButton = findViewById(R.id.filterButton);
+        backButton = findViewById(R.id.backButton);
+        searchInput = findViewById(R.id.searchInput);
+        folderTitle = findViewById(R.id.folderTitle);
+        mainLayout = findViewById(R.id.mainLayout);
+        folderHeader = findViewById(R.id.folderHeader);
+        tabsContainer = findViewById(R.id.tabsContainer);
+        toggleIndicator = findViewById(R.id.toggleIndicator);
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayShowTitleEnabled(false); // Отключаем стандартный заголовок
 
-        // Инициализация базы данных
         db = AppDatabase.getDatabase(this);
         executorService = Executors.newSingleThreadExecutor();
         mainHandler = new Handler(Looper.getMainLooper());
 
-        // Установка адаптеров и LayoutManager
         notesAdapter = new NotesAdapter(new ArrayList<>(), this);
-        foldersAdapter = new FoldersAdapter(new ArrayList<>(), executorService); // Передаём executorService
+        foldersAdapter = new FoldersAdapter(new ArrayList<>(), executorService);
 
-        // Инициализация потоков
-        executorService = Executors.newSingleThreadExecutor();
-        mainHandler = new Handler(Looper.getMainLooper());
-
-        // Загрузка начальных данных
-        loadFolders();
-        loadNotes();
-
-        // Настройка ViewPager2
-        viewPager.setAdapter(new ViewPagerAdapter(this));
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            tab.setText(position == TAB_NOTES ? "Notes" : "Folders");
-            tab.setIcon(position == TAB_NOTES ? android.R.drawable.ic_menu_edit : android.R.drawable.ic_menu_manage);
-        }).attach();
-
-        // Настройка TabLayout
-        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                currentTab = tab.getPosition();
-            }
-
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) {}
-
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {}
-        });
-
-        // Инициализация UI, но загрузка данных асинхронно
         setupViewPager();
         initializeData();
+        setupSearchAndFilter();
 
-        // Обработка нажатия на кнопку создания
         fab.setOnClickListener(v -> {
             if (currentTab == TAB_FOLDERS) {
                 CreateFolderDialog dialog = new CreateFolderDialog();
                 dialog.setListener(this);
                 dialog.show(getSupportFragmentManager(), "createFolderDialog");
             } else {
-                // Логика для создания новой заметки
                 createNewNote();
             }
         });
 
-        // Обработка кнопки меню (заглушка)
         menuButton.setOnClickListener(v -> {
-            // Здесь можно открыть меню или показать Toast для теста
             android.widget.Toast.makeText(this, "Menu clicked", android.widget.Toast.LENGTH_SHORT).show();
         });
 
-        // Настраиваем обработку кнопки "Назад"
+        backButton.setOnClickListener(v -> {
+            resetToolbar();
+            viewPager.setCurrentItem(TAB_FOLDERS);
+        });
+
+        notesTab.setOnClickListener(v -> {
+            if (currentTab != TAB_NOTES) {
+                viewPager.setCurrentItem(TAB_NOTES);
+                animateToggle(TAB_NOTES);
+            }
+        });
+
+        foldersTab.setOnClickListener(v -> {
+            if (currentTab != TAB_FOLDERS) {
+                viewPager.setCurrentItem(TAB_FOLDERS);
+                animateToggle(TAB_FOLDERS);
+            }
+        });
+
+        updateTabSelection(TAB_NOTES); // Изначально выбрана вкладка "Notes"
+        animateToggle(TAB_NOTES); // Устанавливаем начальное положение индикатора без анимации
+
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 if (viewPager.getCurrentItem() == TAB_NOTES) {
-                    viewPager.setCurrentItem(TAB_FOLDERS); // Возвращаемся к папкам
+                    if (currentFolderId != 1) {
+                        resetToolbar();
+                        viewPager.setCurrentItem(TAB_FOLDERS);
+                    } else {
+                        viewPager.setCurrentItem(TAB_FOLDERS);
+                    }
                 } else if (viewPager.getCurrentItem() == TAB_FOLDERS) {
-                    showNotesForFolder(1); // Сбрасываем на все заметки
+                    showNotesForFolder(1);
                 } else {
-                    finish(); // Выход из приложения
+                    finish();
                 }
             }
         });
@@ -127,37 +150,32 @@ public class MainActivity extends AppCompatActivity implements CreateFolderDialo
 
     private void setupViewPager() {
         viewPager.setAdapter(new ViewPagerAdapter(this));
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            tab.setText(position == TAB_NOTES ? "Notes" : "Folders");
-            tab.setIcon(position == TAB_NOTES ? android.R.drawable.ic_menu_edit : android.R.drawable.ic_menu_manage);
-        }).attach();
-
-        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+        viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                currentTab = tab.getPosition();
+            public void onPageSelected(int position) {
+                currentTab = position;
+                animateToggle(position);
+                updateToolbarButtonsVisibility();
             }
-
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) {}
-
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {}
         });
     }
 
-    private void refreshFolders() {
-        executorService.execute(() -> {
-            List<Folder> folders = db.folderDao().getAllFolders();
-            for (Folder folder : folders) {
-                if (folder.getId() == 1) {
-                    folder.setNotesCount(db.noteDao().getAllNotes().size()); // Все заметки для "Все"
-                } else {
-                    folder.setNotesCount(db.noteDao().getNotesCountByFolder(folder.getId()));
-                }
-            }
-            mainHandler.post(() -> foldersAdapter.setFolders(folders));
+    private void animateToggle(int selectedTab) {
+        int startX = selectedTab == TAB_NOTES ? foldersTab.getWidth() : 0;
+        int endX = selectedTab == TAB_NOTES ? 0 : foldersTab.getWidth();
+        ValueAnimator animator = ValueAnimator.ofInt(startX, endX);
+        animator.setDuration(200); // Ускоряем до 200 мс
+        animator.addUpdateListener(animation -> {
+            int value = (int) animation.getAnimatedValue();
+            toggleIndicator.setTranslationX(value);
         });
+        animator.start();
+        updateTabSelection(selectedTab);
+    }
+
+    private void updateTabSelection(int selectedTab) {
+        notesTab.setSelected(selectedTab == TAB_NOTES);
+        foldersTab.setSelected(selectedTab == TAB_FOLDERS);
     }
 
     private void initializeData() {
@@ -184,7 +202,6 @@ public class MainActivity extends AppCompatActivity implements CreateFolderDialo
     }
 
     private void createNewNote() {
-        // Логика для создания новой заметки
         Intent intent = new Intent(this, NoteActivity.class);
         startActivity(intent);
     }
@@ -192,12 +209,11 @@ public class MainActivity extends AppCompatActivity implements CreateFolderDialo
     @Override
     public void onFolderCreated(String name, int color) {
         executorService.execute(() -> {
-            // Создание и вставка папки в фоновом потоке
             Folder folder = new Folder();
             folder.setName(name);
             folder.setColor(color);
             db.folderDao().insert(folder);
-            refreshFolders(); // Обновляем после создания
+            refreshFolders();
         });
     }
 
@@ -216,47 +232,167 @@ public class MainActivity extends AppCompatActivity implements CreateFolderDialo
     }
 
     public void showNotesForFolder(int folderId) {
-        currentFolderId = folderId; // Сохраняем текущую папку
+        currentFolderId = folderId;
         executorService.execute(() -> {
             List<Note> folderNotes = (folderId == 1) ? db.noteDao().getAllNotes() : db.noteDao().getNotesByFolder(folderId);
+            Folder folder = db.folderDao().getFolderById(folderId);
             mainHandler.post(() -> {
                 notesAdapter.setNotes(folderNotes);
                 viewPager.setCurrentItem(TAB_NOTES);
-                refreshFolders(); // Обновляем после перехода
+                refreshFolders();
+                if (folderId != 1) {
+                    tabsContainer.setVisibility(View.GONE);
+                    folderHeader.setVisibility(View.VISIBLE);
+                    folderTitle.setText(folder.getName());
+                    mainLayout.setBackgroundColor(getPastelColor(folder.getColor()));
+                } else {
+                    resetToolbar();
+                }
             });
         });
     }
 
-    public int getCurrentFolderId() {
-        return currentFolderId;
+    private void refreshFolders() {
+        executorService.execute(() -> {
+            List<Folder> folders = db.folderDao().getAllFolders();
+            for (Folder folder : folders) {
+                if (folder.getId() == 1) {
+                    folder.setNotesCount(db.noteDao().getAllNotes().size());
+                } else {
+                    folder.setNotesCount(db.noteDao().getNotesCountByFolder(folder.getId()));
+                }
+            }
+            mainHandler.post(() -> foldersAdapter.setFolders(folders));
+        });
+    }
+
+    private void setupSearchAndFilter() {
+        searchInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String query = s.toString().toLowerCase();
+                executorService.execute(() -> {
+                    List<Note> filteredNotes = db.noteDao().searchNotes("%" + query + "%");
+                    mainHandler.post(() -> notesAdapter.setNotes(filteredNotes));
+                });
+                if (s.length() > 0) {
+                    Drawable drawable = getResources().getDrawable(R.drawable.ic_clear_tiny, null);
+                    int size = dpToPx(8); // Устанавливаем 8dp
+                    drawable.setBounds(0, 0, size, size);
+                    searchInput.setCompoundDrawablesWithIntrinsicBounds(null, null, drawable, null);
+                    searchInput.setCompoundDrawablePadding(dpToPx(4));
+                    Log.d(TAG, "Clear icon size: " + size + "px (" + 8 + "dp)"); // Логируем размер
+                } else {
+                    searchInput.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        searchInput.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                Drawable drawable = searchInput.getCompoundDrawables()[2]; // drawableEnd
+                if (drawable != null && event.getRawX() >= (searchInput.getRight() - drawable.getBounds().width())) {
+                    searchInput.setText("");
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        filterButton.setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("Sort Notes")
+                    .setItems(new String[]{
+                            "Date Created (Asc)", "Date Created (Desc)",
+                            "Date Modified (Asc)", "Date Modified (Desc)",
+                            "Title (Asc)", "Title (Desc)"
+                    }, (dialog, which) -> {
+                        executorService.execute(() -> {
+                            List<Note> sortedNotes;
+                            switch (which) {
+                                case 0: sortedNotes = db.noteDao().getAllNotesSortedByCreatedAsc(); break;
+                                case 1: sortedNotes = db.noteDao().getAllNotesSortedByCreatedDesc(); break;
+                                case 2: sortedNotes = db.noteDao().getAllNotesSortedByModifiedAsc(); break;
+                                case 3: sortedNotes = db.noteDao().getAllNotesSortedByModifiedDesc(); break;
+                                case 4: sortedNotes = db.noteDao().getAllNotesSortedByTitleAsc(); break;
+                                case 5: sortedNotes = db.noteDao().getAllNotesSortedByTitleDesc(); break;
+                                default: sortedNotes = db.noteDao().getAllNotes();
+                            }
+                            mainHandler.post(() -> notesAdapter.setNotes(sortedNotes));
+                        });
+                    })
+                    .show();
+        });
+    }
+
+    // Вспомогательный метод для конверсии dp в px
+    private int dpToPx(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density);
+    }
+
+    private void updateToolbarButtonsVisibility() {
+        if (currentTab == TAB_FOLDERS) {
+            searchInput.setVisibility(View.GONE);
+            filterButton.setVisibility(View.GONE);
+        } else {
+            searchInput.setVisibility(View.VISIBLE);
+            filterButton.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void resetToolbar() {
+        tabsContainer.setVisibility(View.VISIBLE);
+        folderHeader.setVisibility(View.GONE);
+        mainLayout.setBackgroundColor(Color.WHITE);
+        updateToolbarButtonsVisibility();
+    }
+
+    private int getPastelColor(int color) {
+        int alpha = 0xFF;
+        int red = Color.red(color);
+        int green = Color.green(color);
+        int blue = Color.blue(color);
+        red = (red + 255) / 2;
+        green = (green + 255) / 2;
+        blue = (blue + 255) / 2;
+        return Color.argb(alpha, red, green, blue);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        loadNotes(); // Обновляем заметки при возвращении в активность
-        refreshFolders(); // Обновляем при возвращении
+        loadNotes();
+        refreshFolders();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executorService.shutdown(); // Очищаем пул потоков
-    }
-
-    public NotesAdapter getNotesAdapter() { // Добавляем геттер
-        return notesAdapter;
+        executorService.shutdown();
     }
 
     public FoldersAdapter getFoldersAdapter() {
         return foldersAdapter;
     }
 
+    public NotesAdapter getNotesAdapter() {
+        return notesAdapter;
+    }
+
     public ExecutorService getExecutorService() {
         return executorService;
     }
 
-    // Адаптер для ViewPager2
+    public int getCurrentFolderId() {
+        return currentFolderId;
+    }
+
     private class ViewPagerAdapter extends FragmentStateAdapter {
         public ViewPagerAdapter(FragmentActivity fa) {
             super(fa);

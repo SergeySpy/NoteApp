@@ -33,4 +33,25 @@ public interface NoteDao {
 
     @Query("SELECT * FROM Note WHERE folderId = :folderId")
     List<Note> getNotesByFolder(int folderId);
+
+    @Query("SELECT * FROM Note WHERE title LIKE :query OR content LIKE :query")
+    List<Note> searchNotes(String query);
+
+    @Query("SELECT * FROM Note ORDER BY id ASC")
+    List<Note> getAllNotesSortedByCreatedAsc();
+
+    @Query("SELECT * FROM Note ORDER BY id DESC")
+    List<Note> getAllNotesSortedByCreatedDesc();
+
+    @Query("SELECT * FROM Note ORDER BY lastEdited ASC")
+    List<Note> getAllNotesSortedByModifiedAsc();
+
+    @Query("SELECT * FROM Note ORDER BY lastEdited DESC")
+    List<Note> getAllNotesSortedByModifiedDesc();
+
+    @Query("SELECT * FROM Note ORDER BY title ASC")
+    List<Note> getAllNotesSortedByTitleAsc();
+
+    @Query("SELECT * FROM Note ORDER BY title DESC")
+    List<Note> getAllNotesSortedByTitleDesc();
 }

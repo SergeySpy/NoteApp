@@ -3,6 +3,8 @@ package spy.app.noteapp;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -11,7 +13,9 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,12 +46,17 @@ public class NoteActivity extends AppCompatActivity {
         statsView = findViewById(R.id.statsView);
         folderSpinner = findViewById(R.id.folderSpinner);
         ImageButton saveButton = findViewById(R.id.saveButton);
+        TextView lastEdited = findViewById(R.id.lastEdited);
+        View folderColorIndicator = findViewById(R.id.folderColorIndicator);
 
         db = AppDatabase.getDatabase(this);
         executorService = Executors.newSingleThreadExecutor(); // Инициализируем
 
         // Проверяем, редактируем ли существующую заметку
         int noteId = getIntent().getIntExtra("note_id", -1);
+        if (noteId == -1) {
+            lastEdited.setText("Created: " + new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date()));
+        }
         loadFolders(noteId); // Передаём noteId для загрузки после папок
 
         noteContent.addTextChangedListener(new TextWatcher() {
@@ -64,6 +73,17 @@ public class NoteActivity extends AppCompatActivity {
         });
 
         saveButton.setOnClickListener(v -> saveNote());
+
+        folderSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                int color = folders.get(position).getColor();
+                folderColorIndicator.setBackgroundColor(color);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 
     private void loadNote(int noteId) {
@@ -72,6 +92,8 @@ public class NoteActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 noteTitle.setText(currentNote.getTitle());
                 noteContent.setText(currentNote.getContent());
+                TextView lastEdited = findViewById(R.id.lastEdited); // Явно приводим к TextView
+                lastEdited.setText("Last edited: " + new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date(currentNote.getLastEdited())));
                 // Устанавливаем текущую папку в Spinner
                 if (folders != null) { // Проверяем, что папки уже загружены
                     int folderPosition = -1;

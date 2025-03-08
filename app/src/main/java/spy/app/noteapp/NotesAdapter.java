@@ -2,6 +2,7 @@ package spy.app.noteapp;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -52,6 +53,14 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
             holder.contentPreview.setText(""); // Пусто, если контента нет
         }
         holder.lastEdited.setText("Last edited: " + new SimpleDateFormat("dd/MM/yyyy HH:mm").format(new Date(note.getLastEdited())));
+
+        // Устанавливаем цвет индикатора из папки
+        executorService.execute(() -> {
+            Folder folder = db.folderDao().getFolderById(note.getFolderId());
+            int color = folder != null ? folder.getColor() : Color.GRAY; // Серый по умолчанию
+            ((MainActivity) context).runOnUiThread(() -> holder.colorIndicator.setBackgroundColor(color));
+        });
+
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, NoteActivity.class);
             intent.putExtra("note_id", note.getId());
@@ -120,12 +129,14 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
         TextView title;
         TextView contentPreview;
         TextView lastEdited;
+        View colorIndicator; // Добавляем индикатор
 
         public NoteViewHolder(View itemView) {
             super(itemView);
             title = itemView.findViewById(R.id.noteTitle);
             contentPreview = itemView.findViewById(R.id.noteContentPreview);
             lastEdited = itemView.findViewById(R.id.noteLastEdited);
+            colorIndicator = itemView.findViewById(R.id.colorIndicator);
         }
     }
 }

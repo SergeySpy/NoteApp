@@ -29,4 +29,7 @@ public interface FolderDao {
 
     @Query("SELECT * FROM Folder")
     List<Folder> getAllFolders();
+
+    @Query("SELECT * FROM Folder WHERE id = :folderId LIMIT 1")
+    Folder getFolderById(int folderId);
 }
