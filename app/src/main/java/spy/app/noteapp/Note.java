@@ -10,6 +10,7 @@ public class Note {
     private String title;
     private String content;
     private int folderId;
+    private long lastEdited;
 
     // Геттеры и сеттеры
     public int getId() {
@@ -42,5 +43,13 @@ public class Note {
 
     public void setFolderId(int folderId) {
         this.folderId = folderId;
+    }
+
+    public long getLastEdited() {
+        return lastEdited;
+    }
+
+    public void setLastEdited(long lastEdited) {
+        this.lastEdited = lastEdited;
     }
 }

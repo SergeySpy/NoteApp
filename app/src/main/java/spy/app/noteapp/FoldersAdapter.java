@@ -2,6 +2,7 @@ package spy.app.noteapp;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +12,7 @@ import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -28,7 +30,25 @@ public class FoldersAdapter extends RecyclerView.Adapter<FoldersAdapter.FolderVi
 
     public void setFolders(List<Folder> folders) {
         this.folders = folders;
+        Collections.sort(this.folders, (f1, f2) -> {
+            if (f1.getId() == 1) return -1; // "Все" всегда сверху
+            if (f2.getId() == 1) return 1;
+            return f1.getName().compareTo(f2.getName());
+        });
         notifyDataSetChanged();
+    }
+
+    public void refreshFolders() {
+        ExecutorService executor = getExecutorService();
+        if (executor != null) {
+            executor.execute(() -> {
+                List<Folder> updatedFolders = db.folderDao().getAllFolders();
+                for (Folder folder : updatedFolders) {
+                    folder.setNotesCount(db.noteDao().getNotesCountByFolder(folder.getId()));
+                }
+                ((MainActivity) context).runOnUiThread(() -> setFolders(updatedFolders));
+            });
+        }
     }
 
     @Override
@@ -43,22 +63,30 @@ public class FoldersAdapter extends RecyclerView.Adapter<FoldersAdapter.FolderVi
     public void onBindViewHolder(FolderViewHolder holder, int position) {
         Folder folder = folders.get(position);
         holder.name.setText(folder.getName());
-        holder.cardView.setCardBackgroundColor(folder.getColor());
+        holder.cardView.setCardBackgroundColor(getPastelColor(folder.getColor()));
+        holder.notesCount.setText(String.valueOf(folder.getNotesCount())); // Используем кэшированное значение
+        holder.itemView.setOnClickListener(v -> {
+            ((MainActivity) context).showNotesForFolder(folder.getId());
+        });
 
         // Долгий тап
-        holder.itemView.setOnLongClickListener(v -> {
-            new AlertDialog.Builder(context)
-                    .setTitle("Folder Options")
-                    .setItems(new String[]{"Edit", "Delete"}, (dialog, which) -> {
-                        if (which == 0) {
-                            editFolder(folder);
-                        } else {
-                            deleteFolder(folder);
-                        }
-                    })
-                    .show();
-            return true;
-        });
+        if (folder.getId() != 1) { // Отключаем долгий тап для "Все"
+            holder.itemView.setOnLongClickListener(v -> {
+                new AlertDialog.Builder(context)
+                        .setTitle("Folder Options")
+                        .setItems(new String[]{"Edit", "Delete"}, (dialog, which) -> {
+                            if (which == 0) {
+                                editFolder(folder);
+                            } else {
+                                deleteFolder(folder);
+                            }
+                        })
+                        .show();
+                return true;
+            });
+        } else {
+            holder.itemView.setOnLongClickListener(null); // Убираем обработчик
+        }
     }
 
     private void editFolder(Folder folder) {
@@ -96,14 +124,12 @@ public class FoldersAdapter extends RecyclerView.Adapter<FoldersAdapter.FolderVi
 
     private void deleteFolder(Folder folder) {
         ExecutorService executor = getExecutorService();
-        if (executor != null) {
+        if (executor != null && folder.getId() != 1) { // Не удаляем папку "Все"
             executor.execute(() -> {
                 db.folderDao().delete(folder);
                 folders.remove(folder);
                 ((MainActivity) context).runOnUiThread(this::notifyDataSetChanged);
             });
-        } else {
-            android.util.Log.e("FoldersAdapter", "ExecutorService is null in deleteFolder");
         }
     }
 
@@ -127,12 +153,27 @@ public class FoldersAdapter extends RecyclerView.Adapter<FoldersAdapter.FolderVi
 
     public static class FolderViewHolder extends RecyclerView.ViewHolder {
         TextView name;
+        TextView notesCount; // Новое поле
         CardView cardView;
 
         public FolderViewHolder(View itemView) {
             super(itemView);
             name = itemView.findViewById(R.id.folderName);
+            notesCount = itemView.findViewById(R.id.notesCount);
             cardView = itemView.findViewById(R.id.folderCardView);
         }
+    }
+
+    private int getPastelColor(int color) {
+        // Преобразуем яркие цвета в пастельные
+        int alpha = 0xFF;
+        int red = Color.red(color);
+        int green = Color.green(color);
+        int blue = Color.blue(color);
+        // Делаем цвет светлее и менее насыщенным
+        red = (red + 255) / 2;
+        green = (green + 255) / 2;
+        blue = (blue + 255) / 2;
+        return Color.argb(alpha, red, green, blue);
     }
 }

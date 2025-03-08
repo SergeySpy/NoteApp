@@ -1,56 +1,45 @@
 package spy.app.noteapp;
 
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
+import androidx.core.content.ContextCompat;
 
 public class CreateFolderDialog extends DialogFragment {
-
-    private CreateFolderListener listener;
-
     public interface CreateFolderListener {
         void onFolderCreated(String name, int color);
     }
+
+    private CreateFolderListener listener;
 
     public void setListener(CreateFolderListener listener) {
         this.listener = listener;
     }
 
-    @NonNull
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        View view = getActivity().getLayoutInflater().inflate(R.layout.dialog_create_folder, null);
-
+        View view = LayoutInflater.from(getContext()).inflate(R.layout.dialog_create_folder, null);
         EditText folderName = view.findViewById(R.id.folderName);
-        Button redButton = view.findViewById(R.id.redButton);
-        Button greenButton = view.findViewById(R.id.greenButton);
-        Button blueButton = view.findViewById(R.id.blueButton);
-        Button cancelButton = view.findViewById(R.id.cancelButton);
-        Button okButton = view.findViewById(R.id.okButton);
+        final int[] selectedColor = {ContextCompat.getColor(getContext(), android.R.color.holo_blue_light)};
 
-        final int[] selectedColor = {ContextCompat.getColor(getContext(), R.color.red)}; // По умолчанию красный
+        view.findViewById(R.id.redButton).setOnClickListener(v -> selectedColor[0] = ContextCompat.getColor(getContext(), android.R.color.holo_red_light));
+        view.findViewById(R.id.greenButton).setOnClickListener(v -> selectedColor[0] = ContextCompat.getColor(getContext(), android.R.color.holo_green_light));
+        view.findViewById(R.id.blueButton).setOnClickListener(v -> selectedColor[0] = ContextCompat.getColor(getContext(), android.R.color.holo_blue_light));
 
-        redButton.setOnClickListener(v -> selectedColor[0] = ContextCompat.getColor(getContext(), R.color.red));
-        greenButton.setOnClickListener(v -> selectedColor[0] = ContextCompat.getColor(getContext(), R.color.green));
-        blueButton.setOnClickListener(v -> selectedColor[0] = ContextCompat.getColor(getContext(), R.color.blue));
-
-        cancelButton.setOnClickListener(v -> dismiss());
-
-        okButton.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onFolderCreated(folderName.getText().toString(), selectedColor[0]);
-            }
-            dismiss();
-        });
-
-        builder.setView(view);
-        return builder.create();
+        return new AlertDialog.Builder(getContext())
+                .setTitle("Create Folder")
+                .setView(view)
+                .setPositiveButton("OK", (dialog, which) -> {
+                    if (listener != null) {
+                        listener.onFolderCreated(folderName.getText().toString(), selectedColor[0]);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .create();
     }
 }

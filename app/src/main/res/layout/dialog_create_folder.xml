@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -11,54 +12,31 @@
         android:layout_height="wrap_content"
         android:hint="Folder Name" />
 
-    <com.google.android.material.button.MaterialButtonToggleGroup
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
         android:layout_marginTop="16dp">
 
         <Button
             android:id="@+id/redButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Red"
-            android:backgroundTint="@android:color/holo_red_light" />
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:backgroundTint="#FFB6C1" /> <!-- Пастельный красный -->
 
         <Button
             android:id="@+id/greenButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Green"
-            android:backgroundTint="@android:color/holo_green_light" />
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="16dp"
+            android:backgroundTint="#98FB98" /> <!-- Пастельный зелёный -->
 
         <Button
             android:id="@+id/blueButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Blue"
-            android:backgroundTint="@android:color/holo_blue_light" />
-    </com.google.android.material.button.MaterialButtonToggleGroup>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:orientation="horizontal"
-        android:gravity="end">
-
-        <Button
-            android:id="@+id/cancelButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Cancel" />
-
-        <Button
-            android:id="@+id/okButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="OK" />
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="16dp"
+            android:backgroundTint="#ADD8E6" /> <!-- Пастельный синий -->
     </LinearLayout>
 </LinearLayout>

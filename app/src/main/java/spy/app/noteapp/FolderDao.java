@@ -15,7 +15,14 @@ public interface FolderDao {
     void update(Folder folder);
 
     @Delete
-    void delete(Folder folder);
+    default void delete(Folder folder) {
+        if (folder.getId() != 1) { // Не удаляем папку "Все"
+            deleteInternal(folder);
+        }
+    }
+
+    @Delete
+    void deleteInternal(Folder folder); // Внутренний метод для реального удаления
 
     @Insert
     void insert(Folder folder);

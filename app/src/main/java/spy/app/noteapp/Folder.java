@@ -9,6 +9,7 @@ public class Folder {
     private int id;
     private String name;
     private int color;
+    private int notesCount; // Новое поле
 
     // Геттеры и сеттеры
     public int getId() {
@@ -33,5 +34,13 @@ public class Folder {
 
     public void setColor(int color) {
         this.color = color;
+    }
+
+    public int getNotesCount() {
+        return notesCount;
+    }
+
+    public void setNotesCount(int notesCount) {
+        this.notesCount = notesCount;
     }
 }

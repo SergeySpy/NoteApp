@@ -13,8 +13,8 @@ public class NotesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_notes, container, false);
         RecyclerView recyclerView = view.findViewById(R.id.notesRecyclerView);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        recyclerView.setAdapter(((MainActivity) getActivity()).notesAdapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+        recyclerView.setAdapter(((MainActivity) getActivity()).getNotesAdapter()); // Используем геттер
         return view;
     }
 }
